@@ -2,36 +2,43 @@ import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 
 export default function Post() {
-  const [post, setPost] = useState([]);
-  const [categories, setCategories] = useState([]);
+  const [posts, setPosts] = useState([]);
+  const [categories, setCategories] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchPosts = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch("http://127.0.0.1:8000/api/posts/");
-        const data = await response.json();
-        setPost(data);
+        const [postsRes, categoriesRes] = await Promise.all([
+          fetch("http://127.0.0.1:8000/api/posts/"),
+          fetch("http://127.0.0.1:8000/api/categories/"),
+        ]);
+
+        if (!postsRes.ok || !categoriesRes.ok) {
+          throw new Error("Failed to fetch data");
+        }
+
+        const postsData = await postsRes.json();
+        const categoriesData = await categoriesRes.json();
+
+        const categoryMap = {};
+        categoriesData.forEach((cat) => {
+          categoryMap[cat.id] = cat.name;
+        });
+
+        setPosts(postsData);
+        setCategories(categoryMap);
       } catch (error) {
-        console.error("Error fetching posts:", error);
+        setError(error.message);
+      } finally {
+        setLoading(false);
       }
     };
-    
-    fetchPosts();
-  }, [post]); // ✅ Depend on `post` to auto refresh on delete
-  
-  useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        const response = await fetch("http://127.0.0.1:8000/api/categories/");
-        const data = await response.json();
-        setCategories(data);
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-      }
-    };
-    
-    fetchCategories();
-  }, [categories]); 
+
+    fetchData();
+  }, []);
+
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this post?")) return;
 
@@ -41,7 +48,7 @@ export default function Post() {
       });
 
       if (response.ok) {
-        setPost((prevPosts) => prevPosts.filter((p) => p.id !== id)); // ✅ Auto Update UI
+        setPosts((prevPosts) => prevPosts.filter((p) => p.id !== id));
       } else {
         alert("Error deleting post.");
       }
@@ -50,6 +57,9 @@ export default function Post() {
       alert("Something went wrong!");
     }
   };
+
+  if (loading) return <p className="text-center text-gray-600">Loading posts...</p>;
+  if (error) return <p className="text-center text-red-600">Error: {error}</p>;
 
   return (
     <>
@@ -61,6 +71,7 @@ export default function Post() {
         <thead className="text-white bg-blue-500">
           <tr>
             <th className="px-4 py-2">ID</th>
+            {/* <th className="px-4 py-2">Image</th> */}
             <th className="px-4 py-2">Title</th>
             <th className="px-4 py-2">Category</th>
             <th className="px-4 py-2">Status</th>
@@ -68,14 +79,15 @@ export default function Post() {
             <th className="px-4 py-2">Action</th>
           </tr>
         </thead>
-        <tbody className="text-center bg-white">
-          {post.map((post, index) => (
-            <tr key={post.id || index}>
+        <tbody className="bg-white ">
+          {posts.map((post) => (
+            <tr key={post.id}>
               <td className="px-4 py-2">{post.id}</td>
+              {/* <td className="px-4 py-2">
+                <img className="object-cover h-14 w-14" src={post.image} alt="" />
+              </td> */}
               <td className="px-4 py-2">{post.title}</td>
-              <td className="px-4 py-2">
-                {categories.find((category) => category.id === post.category)?.name || "Unknown"}
-              </td>
+              <td className="px-4 py-2">{categories[post.category] || "Unknown"}</td>
               <td className="px-4 py-2">{post.status}</td>
               <td className="px-4 py-2">{new Date(post.created_at).toLocaleDateString()}</td>
               <td className="flex items-center justify-center gap-2 px-4 py-2">

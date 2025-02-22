@@ -1,10 +1,10 @@
-import Sidebar from "./Components/Sidebar";
+import Sidebar from "./Components/admin/Sidebar";
 import { Outlet } from "react-router-dom";
-import Navbar from "./Components/Navbar";
+import Navbar from "./Components/admin/Navbar";
 
 function Layout(){
     return (
-        <div className="bg-blue-700">
+        <div className="bg-gray-100">
             <Sidebar />
             <div className="relative min-h-screen ml-64 bg-gray-50">
         
