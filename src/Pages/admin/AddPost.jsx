@@ -29,16 +29,17 @@ export default function AddPost() {
   const { id } = useParams();
   const editorRef = useRef(null);
   const quillInstance = useRef(null);
-  
+
   const [post, setPost] = useState({
     title: "",
     content: "",
     status: "draft",
     category: null,
     tags: "",
-    featuredImage: null,
+    featuredImage: null, // Will store the file or null
+    existingImage: null, // Added to store the existing image URL
   });
-  
+
   const [categories, setCategories] = useState([]);
   const [imagePreview, setImagePreview] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -49,10 +50,12 @@ export default function AddPost() {
     const fetchCategories = async () => {
       try {
         const res = await fetch(`${API_BASE_URL}/categories/`);
+        if (!res.ok) throw new Error("Failed to fetch categories");
         const data = await res.json();
         setCategories(data);
       } catch (err) {
         setError("Failed to load categories");
+        console.error(err);
       }
     };
     fetchCategories();
@@ -62,37 +65,41 @@ export default function AddPost() {
   useEffect(() => {
     if (id) {
       const fetchPost = async () => {
+        setIsLoading(true);
         try {
           const res = await fetch(`${API_BASE_URL}/posts/${id}/`);
+          if (!res.ok) throw new Error("Failed to fetch post");
           const data = await res.json();
           setPost({
             title: data.title,
             content: data.content,
             status: data.status,
             category: data.category,
-            tags: data.tags,
+            tags: data.tags || "",
             featuredImage: null,
+            existingImage: data.image, // Store the existing image URL
           });
-          setImagePreview(data.image);
+          setImagePreview(data.image); // Show the existing image as preview
           if (quillInstance.current) {
             quillInstance.current.root.innerHTML = data.content;
           }
         } catch (err) {
           setError("Failed to load post");
+          console.error(err);
+        } finally {
+          setIsLoading(false);
         }
       };
       fetchPost();
     }
   }, [id]);
 
-  // Initialize Quill and styles
+  // Initialize Quill
   useEffect(() => {
-    // Add styles
     const styleTag = document.createElement("style");
     styleTag.innerHTML = quillStyles;
     document.head.appendChild(styleTag);
 
-    // Initialize Quill
     if (!quillInstance.current && editorRef.current) {
       quillInstance.current = new Quill(editorRef.current, {
         theme: "snow",
@@ -132,22 +139,22 @@ export default function AddPost() {
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
     const maxSize = 5 * 1024 * 1024; // 5MB
-    const validTypes = ["image/jpeg", "image/png", "image/gif"];
+    const validTypes = ["image/jpeg", "image/png", "image/gif", "image/jpg"];
 
     if (!file) return;
-    
+
     if (!validTypes.includes(file.type)) {
       setError("Please upload a valid image (JPEG, PNG, or GIF)");
       return;
     }
-    
+
     if (file.size > maxSize) {
       setError("Image size must be less than 5MB");
       return;
     }
 
     setError(null);
-    setPost((prev) => ({ ...prev, featuredImage: file }));
+    setPost((prev) => ({ ...prev, featuredImage: file, existingImage: null })); // Clear existingImage when new file is uploaded
     setImagePreview(URL.createObjectURL(file));
   };
 
@@ -166,12 +173,22 @@ export default function AddPost() {
 
     setIsLoading(true);
     const formData = new FormData();
-    Object.entries(post).forEach(([key, value]) => {
-      if (value !== null) formData.append(key, value);
-    });
+    formData.append("title", post.title);
+    formData.append("content", post.content);
+    formData.append("status", post.status);
+    formData.append("category", post.category);
+    formData.append("tags", post.tags);
+    if (post.featuredImage) {
+      formData.append("image", post.featuredImage); // Only append new image if uploaded
+    } else if (id && post.existingImage) {
+      // If editing and no new image, don't overwrite with null
+      // Backend should preserve existing image if 'image' field is not sent
+    }
 
     try {
-      const url = id ? `${API_BASE_URL}/posts/${id}/` : `${API_BASE_URL}/posts/`;
+      const url = id
+        ? `${API_BASE_URL}/posts/${id}/`
+        : `${API_BASE_URL}/posts/`;
       const method = id ? "PUT" : "POST";
 
       const response = await fetch(url, {
@@ -184,9 +201,10 @@ export default function AddPost() {
         throw new Error(errorData.message || "Failed to save post");
       }
 
-      navigate("/post");
+      navigate("/admin/post");
     } catch (err) {
       setError(err.message || "Something went wrong");
+      console.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -200,6 +218,7 @@ export default function AddPost() {
             {error}
           </div>
         )}
+        {isLoading && <p className="text-center">Loading...</p>}
         <input
           type="text"
           name="title"
@@ -207,6 +226,7 @@ export default function AddPost() {
           onChange={handleChange}
           className="w-full p-3 text-xl font-bold border-b-2 border-gray-300 outline-none focus:border-blue-500"
           placeholder="Enter Post Title"
+          disabled={isLoading}
         />
         <div ref={editorRef} className="mt-4" />
       </div>
@@ -219,6 +239,7 @@ export default function AddPost() {
             value={post.status}
             onChange={handleChange}
             className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
+            disabled={isLoading}
           >
             <option value="draft">Draft</option>
             <option value="publish">Publish</option>
@@ -237,6 +258,7 @@ export default function AddPost() {
                   checked={post.category === cat.id}
                   onChange={handleCategoryChange}
                   className="w-4 h-4"
+                  disabled={isLoading}
                 />
                 <label>{cat.name}</label>
               </div>
@@ -255,6 +277,7 @@ export default function AddPost() {
             onChange={handleChange}
             className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500"
             placeholder="comma, separated, tags"
+            disabled={isLoading}
           />
         </div>
 
@@ -265,6 +288,7 @@ export default function AddPost() {
             onChange={handleImageUpload}
             accept="image/jpeg,image/png,image/gif"
             className="w-full"
+            disabled={isLoading}
           />
           {imagePreview && (
             <div className="mt-4">

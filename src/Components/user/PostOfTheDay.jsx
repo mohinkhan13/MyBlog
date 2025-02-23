@@ -2,11 +2,11 @@ import React from "react";
 
 function PostOfTheDay() {
   return (
-    <div className="bg-[#a3a7dc1d] w-screen flex justify-center py-10 md:py-20">
+    <div className="bg-[#a3a7dc1d]  flex justify-center py-10 md:py-20">
       <div className="flex flex-col md:flex-row items-center justify-between p-4 md:p-6 text-white rounded-lg w-full max-w-[90%] md:max-w-[80%] lg:max-w-[75%]">
         {/* Left Side Content */}
         <div className="flex flex-col gap-3 w-full md:w-[50%] text-center md:text-left">
-          <p className="bg-[#a3a7dc28] w-fit text-blue-700 px-4 md:px-5 py-1.5 hover:bg-[#a3a7dc5f] transition-all duration-200 cursor-pointer rounded font-bold mx-auto md:mx-0">
+          <p className="bg-[#a3a7dc28] w-fit text-blue-700 px-4 md:px-5 py-1.5 hover:bg-[#d2d3d95f] transition-all duration-200 cursor-pointer rounded font-bold mx-auto md:mx-0">
             Blog Of the Day
           </p>
           <div>

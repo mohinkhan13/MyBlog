@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
+import { useScroll } from "../../context/ScrollContext";
 
 const Navbar = () => {
   const [isSticky, setIsSticky] = useState(false);
   const [navHeight, setNavHeight] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false); // Mobile Menu State
   const navRef = React.useRef(null);
+
+  const { scrollToNewsletter } = useScroll();
 
   // Calculate Navbar Height (to prevent content shift)
   useEffect(() => {
@@ -80,7 +83,7 @@ const Navbar = () => {
               <Link to="/" className="font-semibold hover:text-blue-800">
                 Home
               </Link>
-              <Link to="/post" className="font-semibold hover:text-blue-800">
+              <Link to="/allpost" className="font-semibold hover:text-blue-800">
                 Posts
               </Link>
               <Link to="/contact" className="font-semibold hover:text-blue-800">
@@ -90,6 +93,7 @@ const Navbar = () => {
 
             {/* Subscribe Button */}
             <button
+              onClick={scrollToNewsletter}
               className={`p-2 rounded transition-all duration-300 ${
                 isSticky ? "bg-white text-black" : "bg-blue-800 text-white"
               }`}

@@ -1,146 +1,208 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from "react";
 
 export default function Category() {
-    const [Category, setCategory] = useState({ name: '' });
-    const [allCategory, setAllCategory] = useState([]);
-    const [id, setId] = useState(null);
+  const [category, setCategory] = useState({ name: "", image: null });
+  const [allCategory, setAllCategory] = useState([]);
+  const [id, setId] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const fileInputRef = useRef(null);
 
-    // Fetch categories on component mount
-    useEffect(() => {
-        fetch('http://127.0.0.1:8000/api/categories/')
-            .then((response) => response.json())            
-            .then((data) => setAllCategory(data))
-            .catch((error) => console.error('Error fetching data:', error));
-    }, []);
-    const submitData = (e) => {
-        e.preventDefault();
-    
-        const categoryData = { 
-            name: Category.name,
-            slug: Category.name.toLowerCase().replace(/\s+/g, '-'),  // Generate slug from name
-        };
-    
-        if (id !== null) {
-            // Update category if id exists
-            fetch(`http://127.0.0.1:8000/api/categories/${id}/`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(categoryData),
-            })
-                .then((response) => {
-                    if (!response.ok) {
-                        throw new Error('Error updating category');
-                    }
-                    return response.json();
-                })
-                .then((updatedCategory) => {
-                    const updatedCategories = allCategory.map((item) =>
-                        item.id === id ? updatedCategory : item
-                    );
-                    setAllCategory(updatedCategories);
-                    setId(null); // Reset id after update
-                    setCategory({ name: '' }); // Reset input field
-                })
-                .catch((error) => {
-                    console.error('Error updating category:', error);
-                    alert('Failed to update category');
-                });
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = () => {
+    setIsLoading(true);
+    setError(null);
+    fetch("http://127.0.0.1:8000/api/categories/")
+      .then((response) => {
+        if (!response.ok) throw new Error("Failed to fetch categories");
+        return response.json();
+      })
+      .then((data) => setAllCategory(data))
+      .catch((error) => {
+        console.error("Error fetching data:", error);
+        setError(error.message);
+      })
+      .finally(() => setIsLoading(false));
+  };
+
+  const handleChanges = (e) => {
+    const { name, value, type, files } = e.target;
+    setCategory((prev) => ({
+      ...prev,
+      [name]: type === "file" ? files[0] : value,
+    }));
+  };
+
+  const submitData = (e) => {
+    e.preventDefault();
+    if (!category.name.trim()) {
+      setError("Category name is required");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    const formData = new FormData();
+    formData.append("name", category.name);
+    formData.append("slug", category.name.toLowerCase().replace(/\s+/g, "-"));
+    if (category.image) {
+      formData.append("image", category.image);
+    }
+
+    fetch(
+      id
+        ? `http://127.0.0.1:8000/api/categories/${id}/`
+        : "http://127.0.0.1:8000/api/categories/",
+      {
+        method: id ? "PUT" : "POST",
+        body: formData,
+      }
+    )
+      .then((response) => {
+        if (!response.ok) throw new Error("Failed to submit category");
+        return response.json();
+      })
+      .then((data) => {
+        if (id) {
+          setAllCategory(
+            allCategory.map((item) => (item.id === id ? data : item))
+          );
         } else {
-            // Add new category
-            fetch('http://127.0.0.1:8000/api/categories/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(categoryData),
-            })
-                .then((response) => response.json())
-                .then((newCategory) => {
-                    setAllCategory([...allCategory, newCategory]);
-                    setCategory({ name: '' }); // Reset input
-                })
-                .catch((error) => {
-                    console.error('Error adding category:', error);
-                    alert('Failed to add category');
-                });
+          setAllCategory([...allCategory, data]);
         }
-    };
-    
+        resetForm();
+      })
+      .catch((error) => {
+        console.error("Error submitting category:", error);
+        setError(error.message);
+      })
+      .finally(() => setIsLoading(false));
+  };
 
-    const handleChanges = (e) => {
-        const { name, value } = e.target;
-        setCategory({ ...Category, [name]: value });
-    };
-
-    const handleDelete = (categoryId) => {
-        fetch(`http://127.0.0.1:8000/api/categories/${categoryId}/`, {
-            method: 'DELETE',
+  const handleDelete = (categoryId) => {
+    if (window.confirm("Are you sure you want to delete this category?")) {
+      setIsLoading(true);
+      setError(null);
+      fetch(`http://127.0.0.1:8000/api/categories/${categoryId}/`, {
+        method: "DELETE",
+      })
+        .then((response) => {
+          if (!response.ok) throw new Error("Failed to delete category");
+          setAllCategory(allCategory.filter((cat) => cat.id !== categoryId));
         })
-            .then(() => {
-                setAllCategory(allCategory.filter((cat) => cat.id !== categoryId));
-            })
-            .catch((error) => {
-                console.error('Error deleting category:', error);
-                alert('Failed to delete category');
-            });
-    };
+        .catch((error) => {
+          console.error("Error deleting category:", error);
+          setError(error.message);
+        })
+        .finally(() => setIsLoading(false));
+    }
+  };
 
-    return (
-        <div className='flex flex-col items-center justify-center gap-10 py-10 '>
-            <form onSubmit={submitData}>
-                <div className='flex flex-col gap-5 p-5 bg-white rounded'>
-                    <input
-                        className='px-2 py-2 border-b outline-0'
-                        type='text'
-                        name='name'
-                        placeholder='Category'
-                        onChange={handleChanges}
-                        value={Category.name || ''}
-                    />
-                    <button type='submit' className='py-2 text-white bg-blue-600'>
-                        {id !== null ? 'Update' : 'Add'}
-                    </button>
-                </div>
-            </form>
+  const resetForm = () => {
+    setCategory({ name: "", image: null });
+    setId(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
-            <div className=''>
-                <table className=''>
-                    <thead>
-                        <tr>
-                            <th className='px-5 py-2 text-center border'>Sr no.</th>
-                            <th className='px-5 py-2 border'>Category</th>
-                            <th className='px-5 py-2 border'>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {allCategory.map((item, index) => (
-                            <tr key={item.id}>
-                                <td className='px-5 py-2 text-center border'>{index + 1}</td>
-                                <td className='px-5 py-2 border'>{item.name}</td>
-                                <td className='px-5 py-2 border'>
-                                    <button
-                                        className='px-2 py-1 text-white bg-green-500'
-                                        onClick={() => {
-                                            setCategory(item);
-                                            setId(item.id);
-                                        }}
-                                    >
-                                        Edit
-                                    </button>
-                                    <button
-                                        className='px-2 py-1 ml-2 text-white bg-red-500'
-                                        onClick={() => handleDelete(item.id)}
-                                    >
-                                        Delete
-                                    </button>
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
-            </div>
+  return (
+    <div className="flex flex-col items-center justify-center gap-10 py-10">
+      <form
+        onSubmit={submitData}
+        className="flex flex-col gap-5 p-5 bg-white rounded w-96"
+      >
+        <input
+          className="px-2 py-2 border-b outline-0"
+          type="text"
+          name="name"
+          placeholder="Category"
+          onChange={handleChanges}
+          value={category.name}
+          disabled={isLoading}
+          aria-label="Category name"
+        />
+        <input
+          type="file"
+          name="image"
+          accept="image/*"
+          onChange={handleChanges}
+          ref={fileInputRef}
+          className="py-2 text-white bg-gray-500"
+          disabled={isLoading}
+          aria-label="Category image"
+        />
+        <div className="flex gap-2">
+          <button
+            type="submit"
+            className="flex-1 py-2 text-white bg-blue-600 disabled:opacity-50"
+            disabled={isLoading}
+          >
+            {isLoading ? "Processing..." : id !== null ? "Update" : "Add"}
+          </button>
+          <button
+            type="button"
+            onClick={resetForm}
+            className="flex-1 py-2 text-white bg-gray-600 disabled:opacity-50"
+            disabled={isLoading}
+          >
+            Reset
+          </button>
         </div>
-    );
+        {error && <p className="text-sm text-red-500">{error}</p>}
+      </form>
+
+      {isLoading && <p>Loading...</p>}
+      {!isLoading && allCategory.length > 0 && (
+        <table className="border border-collapse border-gray-300">
+          <thead>
+            <tr>
+              <th className="px-5 py-2 text-center border">Sr no.</th>
+              <th className="px-5 py-2 border">Category</th>
+              <th className="px-5 py-2 border">Image</th>
+              <th className="px-5 py-2 border">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            {allCategory.map((item, index) => (
+              <tr key={item.id}>
+                <td className="px-5 py-2 text-center border">{index + 1}</td>
+                <td className="px-5 py-2 border">{item.name}</td>
+                <td className="px-5 py-2 border">
+                  {item.image && (
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="object-cover w-16 h-16"
+                    />
+                  )}
+                </td>
+                <td className="px-5 py-2 border">
+                  <button
+                    className="px-2 py-1 text-white bg-green-500 disabled:opacity-50"
+                    onClick={() => {
+                      setCategory({ name: item.name, image: null });
+                      setId(item.id);
+                    }}
+                    disabled={isLoading}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    className="px-2 py-1 ml-2 text-white bg-red-500 disabled:opacity-50"
+                    onClick={() => handleDelete(item.id)}
+                    disabled={isLoading}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+      {!isLoading && allCategory.length === 0 && <p>No categories found</p>}
+    </div>
+  );
 }

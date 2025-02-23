@@ -26,7 +26,7 @@ const HomeAbout = () => {
   ];
 
   return (
-    <section className="px-4 py-32">
+    <section className="px-4 py-32 ">
       <h2 className="text-3xl font-bold text-center text-gray-800 mb-18 md:text-4xl">
         About Me
       </h2>

@@ -7,8 +7,10 @@ import PopularPost from "../../Components/user/PopularPost";
 import HomeAbout from "../../Components/user/HomeAbout";
 import UserStats from "../../Components/user/UserStats";
 import NewsletterUpdate from "../../Components/user/NewsletterUpdate";
+import { useScroll } from "../../context/ScrollContext";
 
 function Index() {
+  const { newsletterRef } = useScroll();
   return (
     <>
       <div>
@@ -17,7 +19,9 @@ function Index() {
         <PopularPost />
         <HomeAbout />
         <UserStats />
-        <NewsletterUpdate />
+        <section ref={newsletterRef}>
+          <NewsletterUpdate />
+        </section>
       </div>
     </>
   );
