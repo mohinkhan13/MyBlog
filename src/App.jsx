@@ -9,6 +9,7 @@ import AddPost from "./Pages/admin/AddPost";
 import Category from "./Pages/admin/Category";
 import Index from "./Pages/user/Index";
 import UserPosts from "./Pages/user/UserPosts";
+import SinglePost from "./Pages/user/SinglePost";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchData } from "./redux/dataSlice";
 import { useEffect } from "react";
@@ -59,6 +60,7 @@ function App() {
         <Route path="/" element={<UserLayout />}>
           <Route index element={<Index />} />
           <Route path="allpost" element={<UserPosts />} />
+          <Route path="/:slug" element={<SinglePost />} />
         </Route>
       </Routes>
     </BrowserRouter>

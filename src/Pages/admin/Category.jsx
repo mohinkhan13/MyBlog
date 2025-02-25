@@ -6,6 +6,7 @@ export default function Category() {
   const [id, setId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null); // For previewing the optimized image
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -30,10 +31,76 @@ export default function Category() {
 
   const handleChanges = (e) => {
     const { name, value, type, files } = e.target;
-    setCategory((prev) => ({
-      ...prev,
-      [name]: type === "file" ? files[0] : value,
-    }));
+
+    if (type === "file" && files[0]) {
+      optimizeImage(files[0]);
+    } else {
+      setCategory((prev) => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const optimizeImage = (file) => {
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    const validTypes = ["image/jpeg", "image/png", "image/gif", "image/jpg"];
+
+    if (!validTypes.includes(file.type)) {
+      setError("Please upload a valid image (JPEG, PNG, or GIF)");
+      return;
+    }
+
+    if (file.size > maxSize) {
+      setError("Image size must be less than 5MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+
+        const MAX_WIDTH = 800; // Resize width (Adjustable)
+        const MAX_HEIGHT = 800; // Resize height (Adjustable)
+        let { width, height } = img;
+
+        // Maintain aspect ratio
+        if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+          if (width > height) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          } else {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Convert to WebP (if supported) or fallback to JPEG
+        canvas.toBlob(
+          (blob) => {
+            const optimizedFile = new File([blob], "optimized-image.webp", {
+              type: "image/webp",
+              lastModified: Date.now(),
+            });
+
+            setCategory((prev) => ({
+              ...prev,
+              image: optimizedFile,
+            }));
+
+            setImagePreview(URL.createObjectURL(optimizedFile));
+          },
+          "image/webp",
+          0.8 // 80% quality
+        );
+      };
+    };
   };
 
   const submitData = (e) => {
@@ -45,6 +112,7 @@ export default function Category() {
 
     setIsLoading(true);
     setError(null);
+
     const formData = new FormData();
     formData.append("name", category.name);
     formData.append("slug", category.name.toLowerCase().replace(/\s+/g, "-"));
@@ -104,6 +172,7 @@ export default function Category() {
   const resetForm = () => {
     setCategory({ name: "", image: null });
     setId(null);
+    setImagePreview(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -133,6 +202,15 @@ export default function Category() {
           disabled={isLoading}
           aria-label="Category image"
         />
+        {imagePreview && (
+          <div>
+            <img
+              src={imagePreview}
+              alt="Preview"
+              className="object-cover w-32 h-32"
+            />
+          </div>
+        )}
         <div className="flex gap-2">
           <button
             type="submit"
@@ -152,7 +230,6 @@ export default function Category() {
         </div>
         {error && <p className="text-sm text-red-500">{error}</p>}
       </form>
-
       {isLoading && <p>Loading...</p>}
       {!isLoading && allCategory.length > 0 && (
         <table className="border border-collapse border-gray-300">

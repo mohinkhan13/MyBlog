@@ -21,20 +21,8 @@ export const fetchData = createAsyncThunk(
 
         const postsData = await postsRes.json();
         const categoriesData = await categoriesRes.json();
-        console.log(postsData);
-        console.log(categoriesData);
 
-        // ✅ Map category names to posts
-        const categoryMap = new Map(
-          categoriesData.map((cat) => [cat.id, cat.name])
-        );
-
-        const enhancedPosts = postsData.map((post) => ({
-          ...post,
-          categoryName: categoryMap.get(post.category) || "Uncategorized",
-        }));
-
-        return { posts: enhancedPosts, categories: categoriesData };
+        return { posts: postsData, categories: categoriesData };
       } catch (error) {
         retries++;
         if (retries > maxRetries) {

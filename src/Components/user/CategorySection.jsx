@@ -32,13 +32,24 @@ function CategorySection() {
   const debouncedScrollRight = debounce(scrollRight, 100);
 
   useEffect(() => {
-    const handleWheel = (e) => e.preventDefault();
+    const handleWheel = (e) => {
+      if (scrollRef.current) {
+        // 🛑 Sirf horizontal scroll ke liye default behavior disable kare
+        if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
+          return; // Agar user vertical scroll kar raha hai to kuch mat karo
+        }
+        e.preventDefault(); // Horizontal scroll ko smooth banane ke liye
+        scrollRef.current.scrollBy({ left: e.deltaY * 2, behavior: "smooth" });
+      }
+    };
+
     const scrollContainer = scrollRef.current;
     if (scrollContainer) {
       scrollContainer.addEventListener("wheel", handleWheel, {
         passive: false,
       });
     }
+
     return () => {
       if (scrollContainer) {
         scrollContainer.removeEventListener("wheel", handleWheel);
@@ -57,12 +68,12 @@ function CategorySection() {
         className="flex flex-col items-center gap-3 cursor-pointer snap-center"
       >
         <img
-          src={cat.image || "/placeholder.jpg"}
-          srcSet={`${cat.image} 1x, ${cat.imageHighRes || cat.image} 2x`}
+          src={cat.image || "https://placehold.co/600x400"}
+          // srcSet={`${cat.image} 1x, ${cat.imageHighRes || cat.image} 2x`}
           sizes="(max-width: 768px) 140px, 180px"
           className="w-[140px] md:w-[180px] h-[140px] md:h-[180px] rounded-full object-cover shadow-md hover:shadow-xl transition-shadow duration-300"
           alt={cat.name || `Category ${index + 1}`}
-          onError={(e) => (e.target.src = "/placeholder.jpg")}
+          onError={(e) => (e.target.src = "https://placehold.co/600x400")}
           loading="lazy"
         />
         <p className="text-sm md:text-[15px] font-semibold text-gray-800 hover:text-blue-700 transition-colors duration-200">

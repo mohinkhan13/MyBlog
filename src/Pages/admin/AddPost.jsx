@@ -138,10 +138,10 @@ export default function AddPost() {
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
+    if (!file) return;
+
     const maxSize = 5 * 1024 * 1024; // 5MB
     const validTypes = ["image/jpeg", "image/png", "image/gif", "image/jpg"];
-
-    if (!file) return;
 
     if (!validTypes.includes(file.type)) {
       setError("Please upload a valid image (JPEG, PNG, or GIF)");
@@ -153,9 +153,55 @@ export default function AddPost() {
       return;
     }
 
-    setError(null);
-    setPost((prev) => ({ ...prev, featuredImage: file, existingImage: null })); // Clear existingImage when new file is uploaded
-    setImagePreview(URL.createObjectURL(file));
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+
+        const MAX_WIDTH = 800; // Resize width (Adjustable)
+        const MAX_HEIGHT = 800; // Resize height (Adjustable)
+        let { width, height } = img;
+
+        // Maintain aspect ratio
+        if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+          if (width > height) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          } else {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Convert to WebP (if supported) or fallback to JPEG
+        canvas.toBlob(
+          (blob) => {
+            const optimizedFile = new File([blob], "optimized-image.webp", {
+              type: "image/webp",
+              lastModified: Date.now(),
+            });
+
+            setPost((prev) => ({
+              ...prev,
+              featuredImage: optimizedFile,
+              existingImage: null, // Remove old image
+            }));
+
+            setImagePreview(URL.createObjectURL(optimizedFile));
+          },
+          "image/webp",
+          0.8 // 80% quality
+        );
+      };
+    };
   };
 
   const handleSubmit = async (e) => {
