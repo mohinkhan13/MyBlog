@@ -1,7 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useContext } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { useDispatch } from "react-redux"; // Add useDispatch
 import Quill from "quill";
 import "quill/dist/quill.snow.css";
+import { AuthContext } from "../../context/AuthContext";
+import { fetchData } from "../../redux/dataSlice"; // Import fetchData
 
 const quillStyles = `
   .ql-container, .ql-editor { 
@@ -25,7 +28,9 @@ const quillStyles = `
 const API_BASE_URL = "http://127.0.0.1:8000/api";
 
 export default function AddPost() {
+  const { user, tokens } = useContext(AuthContext);
   const navigate = useNavigate();
+  const dispatch = useDispatch(); // Add dispatch
   const { id } = useParams();
   const editorRef = useRef(null);
   const quillInstance = useRef(null);
@@ -36,8 +41,8 @@ export default function AddPost() {
     status: "draft",
     category: null,
     tags: "",
-    featuredImage: null, // Will store the file or null
-    existingImage: null, // Added to store the existing image URL
+    featuredImage: null,
+    existingImage: null,
   });
 
   const [categories, setCategories] = useState([]);
@@ -49,7 +54,11 @@ export default function AddPost() {
   useEffect(() => {
     const fetchCategories = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL}/categories/`);
+        const res = await fetch(`${API_BASE_URL}/categories/`, {
+          headers: {
+            Authorization: `Bearer ${tokens?.access}`,
+          },
+        });
         if (!res.ok) throw new Error("Failed to fetch categories");
         const data = await res.json();
         setCategories(data);
@@ -59,7 +68,7 @@ export default function AddPost() {
       }
     };
     fetchCategories();
-  }, []);
+  }, [tokens]);
 
   // Fetch post data if editing
   useEffect(() => {
@@ -67,7 +76,11 @@ export default function AddPost() {
       const fetchPost = async () => {
         setIsLoading(true);
         try {
-          const res = await fetch(`${API_BASE_URL}/posts/${id}/`);
+          const res = await fetch(`${API_BASE_URL}/posts/${id}/`, {
+            headers: {
+              Authorization: `Bearer ${tokens?.access}`,
+            },
+          });
           if (!res.ok) throw new Error("Failed to fetch post");
           const data = await res.json();
           setPost({
@@ -77,9 +90,9 @@ export default function AddPost() {
             category: data.category,
             tags: data.tags || "",
             featuredImage: null,
-            existingImage: data.image, // Store the existing image URL
+            existingImage: data.image,
           });
-          setImagePreview(data.image); // Show the existing image as preview
+          setImagePreview(data.image);
           if (quillInstance.current) {
             quillInstance.current.root.innerHTML = data.content;
           }
@@ -92,7 +105,7 @@ export default function AddPost() {
       };
       fetchPost();
     }
-  }, [id]);
+  }, [id, tokens]);
 
   // Initialize Quill
   useEffect(() => {
@@ -162,11 +175,10 @@ export default function AddPost() {
         const canvas = document.createElement("canvas");
         const ctx = canvas.getContext("2d");
 
-        const MAX_WIDTH = 800; // Resize width (Adjustable)
-        const MAX_HEIGHT = 800; // Resize height (Adjustable)
+        const MAX_WIDTH = 800;
+        const MAX_HEIGHT = 800;
         let { width, height } = img;
 
-        // Maintain aspect ratio
         if (width > MAX_WIDTH || height > MAX_HEIGHT) {
           if (width > height) {
             height *= MAX_WIDTH / width;
@@ -181,7 +193,6 @@ export default function AddPost() {
         canvas.height = height;
         ctx.drawImage(img, 0, 0, width, height);
 
-        // Convert to WebP (if supported) or fallback to JPEG
         canvas.toBlob(
           (blob) => {
             const optimizedFile = new File([blob], "optimized-image.webp", {
@@ -192,13 +203,13 @@ export default function AddPost() {
             setPost((prev) => ({
               ...prev,
               featuredImage: optimizedFile,
-              existingImage: null, // Remove old image
+              existingImage: null,
             }));
 
             setImagePreview(URL.createObjectURL(optimizedFile));
           },
           "image/webp",
-          0.8 // 80% quality
+          0.8
         );
       };
     };
@@ -217,6 +228,14 @@ export default function AddPost() {
       return;
     }
 
+    if (!tokens || !tokens.access) {
+      setError("Authentication token missing. Please log in again.");
+      console.log("Tokens missing:", tokens);
+      return;
+    }
+
+    console.log("Submitting with token:", tokens.access);
+
     setIsLoading(true);
     const formData = new FormData();
     formData.append("title", post.title);
@@ -225,10 +244,7 @@ export default function AddPost() {
     formData.append("category", post.category);
     formData.append("tags", post.tags);
     if (post.featuredImage) {
-      formData.append("image", post.featuredImage); // Only append new image if uploaded
-    } else if (id && post.existingImage) {
-      // If editing and no new image, don't overwrite with null
-      // Backend should preserve existing image if 'image' field is not sent
+      formData.append("image", post.featuredImage);
     }
 
     try {
@@ -239,18 +255,23 @@ export default function AddPost() {
 
       const response = await fetch(url, {
         method,
+        headers: {
+          Authorization: `Bearer ${tokens.access}`,
+        },
         body: formData,
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.message || "Failed to save post");
+        throw new Error(errorData.detail || "Failed to save post");
       }
 
+      // Fetch updated data after successful save
+      await dispatch(fetchData({ isAdmin: user.is_superuser })).unwrap(); // Dispatch fetchData
       navigate("/admin/post");
     } catch (err) {
       setError(err.message || "Something went wrong");
-      console.error(err);
+      console.error("Error:", err);
     } finally {
       setIsLoading(false);
     }

@@ -1,45 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom"; // Added useNavigate
+import { useSelector } from "react-redux";
 
 export default function Post() {
-  const [posts, setPosts] = useState([]);
-  const [categories, setCategories] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const navigate = useNavigate(); // For programmatic navigation
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [postsRes, categoriesRes] = await Promise.all([
-          fetch("http://127.0.0.1:8000/api/posts/"),
-          fetch("http://127.0.0.1:8000/api/categories/"),
-        ]);
-
-        if (!postsRes.ok) throw new Error("Failed to fetch posts");
-        if (!categoriesRes.ok) throw new Error("Failed to fetch categories");
-
-        const postsData = await postsRes.json();
-        const categoriesData = await categoriesRes.json();
-
-        const categoryMap = {};
-        categoriesData.forEach((cat) => {
-          categoryMap[cat.id] = cat.name;
-        });
-
-        setPosts(postsData);
-        setCategories(categoryMap);
-      } catch (error) {
-        setError(error.message);
-        console.error("Fetch Error:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
-
+  const { posts, loading, error } = useSelector((state) => state.data);
+  if (loading) return <p>Loading posts...</p>;
+  if (error) return <p>Error: {error}</p>;
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this post?")) return;
 
@@ -103,9 +69,7 @@ export default function Post() {
                 )}
               </td> */}
               <td className="px-4 py-2">{post.title}</td>
-              <td className="px-4 py-2">
-                {categories[post.category] || "Unknown"}
-              </td>
+              <td className="px-4 py-2">{post.categoryName || "Unknown"}</td>
               <td className="px-4 py-2 capitalize">{post.status}</td>
               <td className="px-4 py-2">
                 {new Date(post.created_at).toLocaleDateString()}

@@ -1,6 +1,7 @@
-import React from "react";
+import React, { useContext } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";
+import { AuthContext } from "../../../context/AuthContext";
 
 function CommentSection({
   post,
@@ -11,6 +12,8 @@ function CommentSection({
   replyContent,
   setReplyContent,
 }) {
+  const { user, tokens } = useContext(AuthContext);
+
   const fadeInUp = {
     hidden: { opacity: 0, y: 20 },
     visible: {
@@ -23,36 +26,56 @@ function CommentSection({
   const handleAddComment = async () => {
     if (!newComment.trim()) return;
 
+    if (!user || !tokens?.access) {
+      alert("Please login to post a comment");
+      return;
+    }
+
     try {
-      const res = await axios.post(`http://127.0.0.1:8000/api/comments/`, {
-        post: post.id,
-        name: "User",
-        email: "user@example.com",
-        content: newComment,
-      });
+      const res = await axios.post(
+        `http://127.0.0.1:8000/api/comments/`,
+        {
+          post: post.id,
+          content: newComment,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${tokens.access}`,
+          },
+        }
+      );
       setComments([...comments, { ...res.data, replies: [] }]);
       setNewComment("");
     } catch (err) {
       console.error("Error posting comment:", err);
-      alert("Failed to post comment");
+      alert(
+        "Failed to post comment: " +
+          (err.response?.data?.detail || "Unknown error")
+      );
     }
   };
 
   const handleAddReply = async (commentId) => {
     if (!replyContent[commentId]?.trim()) return;
 
+    if (!user || !tokens?.access) {
+      alert("Please login to post a reply");
+      return;
+    }
+
     try {
-      const res = await axios.post(`http://127.0.0.1:8000/api/replies/`, {
-        comment: commentId,
-        name: "User",
-        email: "user@example.com",
-        content: replyContent[commentId],
-      });
-
-      console.log("Reply added for comment", commentId, res.data); // Debug
-      console.log("Updated comments state before:", comments); // Debug
-
-      // Update only the specific comment’s replies
+      const res = await axios.post(
+        `http://127.0.0.1:8000/api/replies/`,
+        {
+          comment: commentId,
+          content: replyContent[commentId],
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${tokens.access}`,
+          },
+        }
+      );
       setComments((prevComments) =>
         prevComments.map((c) =>
           c.id === commentId
@@ -60,15 +83,17 @@ function CommentSection({
             : c
         )
       );
-
-      console.log("Updated comments state after:", comments); // Debug
       setReplyContent((prev) => ({ ...prev, [commentId]: "" }));
     } catch (err) {
       console.error("Error posting reply:", err);
-      alert("Failed to post reply");
+      alert(
+        "Failed to post reply: " +
+          (err.response?.data?.detail || "Unknown error")
+      );
     }
   };
 
+  // ... rest of the JSX remains the same, but update avatar and name display
   return (
     <motion.div
       className="max-w-3xl px-4 py-12 mx-auto bg-white rounded-lg shadow-lg sm:px-6"
@@ -118,13 +143,13 @@ function CommentSection({
             >
               {/* Avatar */}
               <div className="flex items-center justify-center flex-shrink-0 w-10 h-10 font-semibold text-white rounded-full shadow-md sm:w-12 sm:h-12 bg-gradient-to-br from-blue-400 to-indigo-500">
-                {comment.name?.charAt(0) || "U"}
+                {comment.user?.charAt(0) || "U"} {/* Update to use email */}
               </div>
 
               {/* Comment Content */}
               <div className="flex-1">
                 <p className="font-semibold text-gray-800">
-                  {comment.name || "Unknown"}
+                  {comment.user || "Unknown"} {/* Update to use email */}
                 </p>
                 <span className="text-xs text-gray-400">
                   •{" "}
@@ -178,12 +203,10 @@ function CommentSection({
                   <div className="pl-4 mt-4 space-y-4 border-l-2 border-gray-200 sm:ml-6">
                     {comment.replies.map((reply) => (
                       <div key={reply.id}>
-                        {/* <span className="text-sm font-medium text-blue-600">
-                          Reply
-                        </span> */}
                         <div className="flex items-center gap-2 mt-1 sm:gap-3">
                           <p className="font-semibold text-gray-700">
-                            {reply.name || "Unknown"}
+                            {reply.user || "Unknown"}{" "}
+                            {/* Update to use email */}
                           </p>
                           <span className="text-xs text-gray-400">
                             •{" "}

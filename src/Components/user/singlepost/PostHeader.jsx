@@ -55,7 +55,7 @@ function PostHeader({ post }) {
         >
           <div className="flex items-center gap-3">
             <div className="flex items-center justify-center w-10 h-10 font-semibold text-white bg-blue-500 rounded-full shadow-md">
-              {post.author?.charAt(0) || "U"}
+              {post.author || "U"}
             </div>
             <span className="font-medium">{post.author || "Unknown"}</span>
           </div>

@@ -5,13 +5,48 @@ export default function Sidebar() {
   const location = useLocation();
 
   const [sideLinks] = useState([
-    { index: 1, name: "Dashboard", icon: "ri-tv-2-line", color: "#48b4d5", goTo : '/admin' },
-    { index: 2, name: "Post", icon: "ri-article-line", color: "#FFB200", goTo : 'post' },
-    { index: 3, name: "Category", icon: "ri-folder-line", color: "#FFB200", goTo : 'category' },
-    { index: 4, name: "User", icon: "ri-user-line", color: "#3A7D44", goTo : 'users' },
-    { index: 5, name: "Comment", icon: "ri-chat-3-line", color: "#2D336B", goTo : '/' },
-    { index: 6, name: "Setting", icon: "ri-settings-2-line", color: "#FF0000", goTo : '/' },
-    
+    {
+      index: 1,
+      name: "Dashboard",
+      icon: "ri-tv-2-line",
+      color: "#48b4d5",
+      goTo: "/admin",
+    },
+    {
+      index: 2,
+      name: "Post",
+      icon: "ri-article-line",
+      color: "#FFB200",
+      goTo: "post",
+    },
+    {
+      index: 3,
+      name: "Category",
+      icon: "ri-folder-line",
+      color: "#FFB200",
+      goTo: "category",
+    },
+    {
+      index: 4,
+      name: "User",
+      icon: "ri-user-line",
+      color: "#3A7D44",
+      goTo: "users",
+    },
+    {
+      index: 5,
+      name: "Comment",
+      icon: "ri-chat-3-line",
+      color: "#2D336B",
+      goTo: "/",
+    },
+    {
+      index: 6,
+      name: "Setting",
+      icon: "ri-settings-2-line",
+      color: "#FF0000",
+      goTo: "/",
+    },
   ]);
 
   return (
@@ -25,7 +60,9 @@ export default function Sidebar() {
             <Link
               to={`${sideLink.goTo}`}
               className={`flex items-center gap-4 p-2 rounded group hover:text-black ${
-                location.pathname === `/${sideLink.goTo}` ? "bg-gray-200" : "text-gray-500"
+                location.pathname === `/${sideLink.goTo}`
+                  ? "bg-gray-200"
+                  : "text-gray-500"
               }`}
             >
               <i
